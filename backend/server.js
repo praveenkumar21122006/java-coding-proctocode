@@ -264,11 +264,16 @@ app.get('/exam', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/exam.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Online Exam Proctoring Portal running at http://localhost:${PORT}`);
-  console.log(`Exams: ${EXAMS.length}, Problems: ${PROBLEMS.length}`);
-  import('child_process').then(cp => {
-    try { cp.execSync('javac -version', { stdio: 'ignore' }); console.log('JDK detected: real Java compilation enabled'); }
-    catch { console.log('JDK NOT found: running in MOCK mode (install default-jdk for real execution)'); }
+// Vercel serverless export - do not listen when on Vercel
+export default app;
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Online Exam Proctoring Portal running at http://localhost:${PORT}`);
+    console.log(`Exams: ${EXAMS.length}, Problems: ${PROBLEMS.length}`);
+    import('child_process').then(cp => {
+      try { cp.execSync('javac -version', { stdio: 'ignore' }); console.log('JDK detected: real Java compilation enabled'); }
+      catch { console.log('JDK NOT found: running in MOCK mode (install default-jdk for real execution)'); }
+    });
   });
-});
+}
