@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Exam - ProctoCode</title>
+<link rel="stylesheet" href="css/style.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js"></script>
+</head>
+<body>
+<nav class="navbar" style="padding:10px 16px">
+  <div class="nav-brand">🎓 ProctoCode <span id="examTitle" style="font-weight:400;font-size:13px;color:var(--muted);margin-left:12px"></span></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div id="timer" class="timer">00:00</div>
+    <button class="btn btn-danger" onclick="submitExam()">Submit Exam</button>
+    <button class="btn" onclick="location.href='/'">Exit</button>
+  </div>
+</nav>
+
+<div class="exam-layout">
+  <!-- Left: Problems -->
+  <div class="panel">
+    <div class="panel-header">Problems <span id="qCount" style="font-weight:400;color:var(--muted)"></span></div>
+    <div class="panel-body">
+      <div class="problem-list" id="problemList"></div>
+      <div id="problemDetail" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- Center: Editor + Tests -->
+  <div class="panel" style="min-height:0">
+    <div class="panel-header">
+      <span>Java Editor - Class Main</span>
+      <span style="font-weight:400;font-size:11px;color:var(--muted)">Ctrl+Enter to Run</span>
+    </div>
+    <div class="editor-wrap">
+      <div id="monaco"></div>
+      <div style="display:flex;gap:8px;padding:8px;border-top:1px solid var(--border);background:#f8fafc">
+        <input id="customInput" placeholder="Custom stdin (optional)" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px"/>
+        <button class="btn" onclick="runCode()">Run</button>
+        <button class="btn btn-primary" onclick="submitCode()">Submit</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('output')">Output</div>
+      <div class="tab" onclick="switchTab('verdict')">Verdict</div>
+      <div class="tab" onclick="switchTab('tests')">Tests</div>
+    </div>
+    <div id="tab-output" class="tab-content"><pre id="output" style="white-space:pre-wrap;font-family:monospace;font-size:12px;color:var(--muted)">Run your code to see output...</pre></div>
+    <div id="tab-verdict" class="tab-content" style="display:none"><div id="verdictBox" style="font-size:13px;color:var(--muted)">Submit to see verdict (hidden tests evaluated)</div></div>
+    <div id="tab-tests" class="tab-content" style="display:none"><table class="test-table" id="testTable"><tr><th>#</th><th>Input</th><th>Expected</th><th>Output</th><th>Status</th></tr></table></div>
+  </div>
+
+  <!-- Right: Proctor -->
+  <div class="panel proctor-panel">
+    <div class="panel-header">Proctoring <span id="proctorStatus" style="font-weight:400;font-size:11px"><span class="status-dot status-ok"></span>Initializing</span></div>
+    <div class="panel-body" style="display:flex;flex-direction:column;gap:12px">
+      <div class="webcam-wrap">
+        <video id="webcam" autoplay muted playsinline></video>
+        <canvas id="overlay"></canvas>
+        <div class="proctor-overlay">
+          <span id="faceLabel">Detecting...</span>
+          <span id="violationCount">0 violations</span>
+        </div>
+      </div>
+      <canvas id="motionCanvas" width="160" height="120" style="display:none"></canvas>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+        <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center"><b id="mFaces">-</b><br/><span style="color:var(--muted)">Faces</span></div>
+        <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center"><b id="mMotion">-</b><br/><span style="color:var(--muted)">Motion</span></div>
+        <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center"><b id="mTab">0</b><br/><span style="color:var(--muted)">Tab Switches</span></div>
+        <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center"><b id="mFullscreen">-</b><br/><span style="color:var(--muted)">Fullscreen</span></div>
+      </div>
+      <div>
+        <b style="font-size:12px">Violations Log</b>
+        <div class="violation-list" id="violationList" style="margin-top:6px"></div>
+        <div id="downloadProctorBar" style="display:none;margin-top:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:11px;color:var(--danger);font-weight:700">⚠️ Proctor violation detected for <span id="dlUserName">you</span></div>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="btn btn-danger" style="flex:1;font-size:11px;padding:6px" onclick="downloadProctor('csv')">⬇️ Download Report CSV</button>
+            <button class="btn" style="flex:1;font-size:11px;padding:6px" onclick="downloadProctor('json')">⬇️ JSON</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">Filename includes your name • Share with instructor if flagged</div>
+        </div>
+        <button class="btn" style="width:100%;margin-top:8px;font-size:11px" onclick="captureSnapshot()">Capture Snapshot (test)</button>
+        <button class="btn" style="width:100%;margin-top:6px;font-size:11px" onclick="downloadProctor('csv')">📥 Download My Report (with my name)</button>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px;font-size:11px;color:#92400e">
+        <b>Rules:</b> Keep face centered • No other person • Don't switch tab • Stay fullscreen • No copy-paste
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="resultModal">
+  <div class="modal-box">
+    <h2 id="resultTitle">Exam Submitted</h2>
+    <div id="resultBody" style="margin:12px 0;font-size:13px;color:var(--muted)"></div>
+    <div id="resultProctorDl" style="margin:10px 0;padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;display:none">
+      <b style="font-size:12px">Your Proctor Report (<span id="resultUserName"></span>)</b>
+      <p style="font-size:11px;color:var(--muted)">Download report with your name - includes all violations for this exam</p>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-danger" style="flex:1" onclick="downloadProctor('csv')">⬇️ CSV</button>
+        <button class="btn" style="flex:1" onclick="downloadProctor('json')">⬇️ JSON</button>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="location.href='/'">Back to Dashboard</button>
+  </div>
+</div>
+
+<script src="js/proctor.js"></script>
+<script>
+let exam=null, problems=[], currentIdx=0, editor=null, timerInt=null, timeLeft=0;
+let answers={}; // problemId -> {score, verdict, passed, total}
+let user = JSON.parse(localStorage.getItem('procto_user')||'null') || {name:'Student', role:'student'};
+const examId = new URLSearchParams(location.search).get('id') || 'exam-java-midterm';
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((el,i)=> el.classList.toggle('active', ['output','verdict','tests'][i]===t));
+  document.getElementById('tab-output').style.display = t==='output'?'block':'none';
+  document.getElementById('tab-verdict').style.display = t==='verdict'?'block':'none';
+  document.getElementById('tab-tests').style.display = t==='tests'?'block':'none';
+}
+
+async function initExam(){
+  const res = await fetch('/api/exams/'+examId);
+  if(!res.ok){ alert('Exam not found'); location.href='/'; return; }
+  exam = await res.json();
+  problems = exam.problems;
+  document.getElementById('examTitle').textContent = exam.title + (exam.proctoring?' • Proctored':'');
+  document.getElementById('qCount').textContent = problems.length+' Qs';
+  timeLeft = exam.durationMins*60;
+  renderList();
+  loadProblem(0);
+  startTimer();
+  initEditor();
+  if(exam.proctoring){
+    Proctor.init({
+      examId,
+      userId: user.name,
+      videoEl: document.getElementById('webcam'),
+      overlayEl: document.getElementById('overlay'),
+      onViolation: (e, details)=> {
+        addViolation(e, details);
+        // send to backend
+        fetch('/api/proctor/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({examId, userId:user.name, event:e, details})});
+      }
+    });
+  } else {
+    document.getElementById('proctorStatus').innerHTML='<span class="status-dot status-ok"></span>Practice - disabled';
+    document.getElementById('faceLabel').textContent='Proctoring OFF';
+  }
+  // fullscreen + tab listeners already in proctor.js
+  document.addEventListener('keydown', e=>{
+    if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ runCode(); }
+  });
+  // disable copy-paste in editor container if proctored
+  if(exam.proctoring){
+    document.addEventListener('copy', e=> logCopy('copy'));
+    document.addEventListener('paste', e=> logCopy('paste'));
+    document.addEventListener('cut', e=> logCopy('cut'));
+  }
+}
+function logCopy(type){
+  addViolation('COPY_PASTE', type+' detected');
+  fetch('/api/proctor/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({examId, userId:user.name, event:'COPY_PASTE', details:type})});
+}
+
+function renderList(){
+  const el=document.getElementById('problemList');
+  el.innerHTML=problems.map((p,i)=>`
+    <div class="problem-item ${i===currentIdx?'active':''} ${answers[p.id]?.verdict==='Accepted'?'solved':''}" onclick="loadProblem(${i})">
+      <span>${i+1}. ${p.title}</span>
+      <span class="badge badge-${p.difficulty.toLowerCase()}">${p.difficulty}</span>
+    </div>
+  `).join('');
+}
+
+function loadProblem(idx){
+  currentIdx=idx;
+  const p=problems[idx];
+  renderList();
+  document.getElementById('problemDetail').innerHTML=`
+    <h3 style="font-size:14px">${p.title} <span class="badge badge-${p.difficulty.toLowerCase()}">${p.difficulty}</span></h3>
+    <p style="font-size:12px;color:var(--muted);margin:8px 0;white-space:pre-wrap">${p.description}</p>
+    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:12px;margin:8px 0">
+      <b>Sample:</b><br/>Input: <code>${escapeHtml(p.sample.input)}</code><br/>Output: <code>${escapeHtml(p.sample.output)}</code>
+    </div>
+    <div style="font-size:11px;color:var(--muted)">Category: ${p.category} • Tests: ${p.tests.length}+${p.hiddenTests.length} hidden</div>
+    ${answers[p.id]?`<div style="margin-top:8px;padding:8px;border-radius:8px;background:${answers[p.id].verdict==='Accepted'?'#ecfdf5':'#fef2f2'};font-size:12px"><b>Last:</b> <span class="verdict-${answers[p.id].verdict==='Accepted'?'AC':'WA'}">${answers[p.id].verdict}</span> ${answers[p.id].passed}/${answers[p.id].total} • Score ${answers[p.id].score}</div>`:''}
+  `;
+  if(editor){
+    const saved = localStorage.getItem('code_'+examId+'_'+p.id);
+    editor.setValue(saved || p.template);
+  }
+  // show previous verdict if any
+  if(answers[p.id]){
+    showVerdict(answers[p.id]);
+  }
+}
+
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function initEditor(){
+  require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs'}});
+  require(['vs/editor/editor.main'], ()=>{
+    editor=monaco.editor.create(document.getElementById('monaco'),{
+      value: problems[0]?.template||'',
+      language:'java',
+      theme:'vs',
+      fontSize:13,
+      minimap:{enabled:false},
+      wordWrap:'on'
+    });
+    editor.onDidChangeModelContent(()=>{
+      const p=problems[currentIdx];
+      if(p) localStorage.setItem('code_'+examId+'_'+p.id, editor.getValue());
+    });
+  });
+}
+
+function startTimer(){
+  const el=document.getElementById('timer');
+  function tick(){
+    const m=Math.floor(timeLeft/60), s=timeLeft%60;
+    el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    if(timeLeft<300) el.className='timer warn';
+    if(timeLeft<60) el.className='timer danger';
+    if(timeLeft<=0){ clearInterval(timerInt); submitExam(true); }
+    timeLeft--;
+  }
+  tick();
+  timerInt=setInterval(tick,1000);
+}
+
+async function runCode(){
+  const p=problems[currentIdx];
+  const code=editor.getValue();
+  const stdin=document.getElementById('customInput').value;
+  document.getElementById('output').textContent='Running...';
+  switchTab('output');
+  const res=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code, stdin})});
+  const data=await res.json();
+  let out='';
+  if(data.mocked) out+='[MOCK MODE] JDK not installed - showing mock output\n';
+  out+=(data.stdout||'') + (data.stderr?'\n[stderr]\n'+data.stderr:'');
+  if(data.timedOut) out+='\n[Time Limit Exceeded]';
+  document.getElementById('output').textContent=out||'(no output)';
+}
+
+async function submitCode(){
+  const p=problems[currentIdx];
+  const code=editor.getValue();
+  document.getElementById('verdictBox').textContent='Judging...';
+  switchTab('verdict');
+  const res=await fetch('/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code, problemId:p.id, examId, userId:user.name})});
+  const data=await res.json();
+  answers[p.id]={score:data.score, verdict:data.verdict, passed:data.passed, total:data.total, results:data.results};
+  showVerdict(data);
+  renderList();
+}
+
+function showVerdict(data){
+  const box=document.getElementById('verdictBox');
+  const cls = data.verdict==='Accepted'?'AC': data.verdict==='Compilation Error'?'CE':'WA';
+  box.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="verdict-${cls}">${data.verdict}</span>
+      <span style="font-weight:700">${data.passed}/${data.total} • ${data.score}%</span>
+    </div>
+    ${data.mocked?'<div style="margin-top:6px;font-size:11px;background:#fffbeb;border:1px solid #fde68a;padding:6px;border-radius:6px">Mock judging (install JDK for real compilation)</div>':''}
+    <div style="margin-top:8px;font-size:11px;color:var(--muted)">Auto-judged against ${data.total} tests (hidden masked)</div>
+  `;
+  const tbl=document.getElementById('testTable');
+  tbl.innerHTML='<tr><th>#</th><th>Input</th><th>Expected</th><th>Output</th><th>Status</th></tr>'+
+    data.results.map((r,i)=>`<tr><td>${i+1}${r.hidden?'*':''}</td><td><code style="font-size:11px">${escapeHtml(r.input).slice(0,60)}</code></td><td><code>${escapeHtml(r.expected).slice(0,60)}</code></td><td><code>${escapeHtml(r.output).slice(0,60)}</code></td><td class="${r.passed?'test-pass':'test-fail'}">${r.passed?'PASS':'FAIL'}</td></tr>`).join('');
+}
+
+function addViolation(event, details){
+  const list=document.getElementById('violationList');
+  const div=document.createElement('div');
+  div.className='violation '+(event==='TAB_SWITCH'||event==='FULLSCREEN_EXIT'?'':'warn');
+  const time=new Date().toLocaleTimeString();
+  div.textContent=`[${time}] ${event}: ${details}`;
+  list.prepend(div);
+  const count=list.children.length;
+  document.getElementById('violationCount').textContent=count+' violations';
+  if(count>=1){
+    const bar=document.getElementById('downloadProctorBar');
+    if(bar){ bar.style.display='block'; document.getElementById('dlUserName').textContent=user.name; }
+  }
+  if(count>=3){
+    document.getElementById('proctorStatus').innerHTML='<span class="status-dot status-danger"></span>FLAGGED';
+  }
+}
+
+function downloadProctor(format){
+  const fmt=format||'csv';
+  const url=`/api/proctor/download/${encodeURIComponent(examId)}?userId=${encodeURIComponent(user.name)}&format=${fmt}`;
+  const a=document.createElement('a'); a.href=url; a.download=''; document.body.appendChild(a); a.click(); a.remove();
+}
+
+function captureSnapshot(){
+  if(window.Proctor) Proctor.capture();
+}
+
+async function submitExam(auto=false){
+  if(!auto && !confirm('Submit exam? You cannot return after submission.')) return;
+  clearInterval(timerInt);
+  if(window.Proctor) Proctor.stop();
+  const answerArr=problems.map(p=>({problemId:p.id, ... (answers[p.id]||{score:0, verdict:'Not Attempted', passed:0, total: p.tests.length+p.hiddenTests.length})}));
+  const violations=document.getElementById('violationList').children.length;
+  const proctorSummary={violations, flagged: violations>=3};
+  const res=await fetch('/api/exam-submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({examId, userId:user.name, answers:answerArr, proctorSummary})});
+  const data=await res.json();
+  document.getElementById('resultTitle').textContent = data.flagged?'Flagged for Review': data.passed?'Passed':'Submitted';
+  document.getElementById('resultBody').innerHTML=`
+    <b>Exam:</b> ${exam.title}<br/>
+    <b>Student:</b> ${user.name}<br/>
+    <b>Score:</b> ${data.avgScore}% (${data.totalScore} pts)<br/>
+    <b>Status:</b> ${data.passed?'Passed':'Failed'}<br/>
+    <b>Violations:</b> ${violations} ${data.flagged?'<span style="color:var(--danger)">• Flagged</span>':''}<br/>
+    <div style="margin-top:10px;text-align:left;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12px">
+      ${answerArr.map(a=>`• ${a.problemId}: ${a.verdict} (${a.passed}/${a.total}) ${a.score}%`).join('<br/>')}
+    </div>
+  `;
+  document.getElementById('resultUserName').textContent=user.name;
+  document.getElementById('resultProctorDl').style.display='block';
+  document.getElementById('resultModal').classList.add('show');
+  try{ if(document.fullscreenElement) document.exitFullscreen(); }catch{}
+}
+
+window.loadProblem=loadProblem;
+window.runCode=runCode;
+window.submitCode=submitCode;
+window.submitExam=submitExam;
+window.switchTab=switchTab;
+window.captureSnapshot=captureSnapshot;
+
+initExam();
+</script>
+</body>
+</html>

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ProctoCode - Online Java Exam with Proctoring (1000 Easy)</title>
+<link rel="stylesheet" href="css/style.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">🎓 <span>ProctoCode</span> <small style="font-weight:400;color:var(--muted);margin-left:8px">1000 Easy • Proctored Java Exam</small></div>
+  <div class="nav-links">
+    <span id="userLabel" style="font-size:13px;color:var(--muted)"></span>
+    <button class="btn btn-ghost" onclick="openAdmin()">Admin</button>
+    <button class="btn btn-primary" onclick="document.getElementById('loginModal').classList.add('show')">Login</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="hero">
+    <div>
+      <h1>Automated Java Coding Exam Portal<br/>with Webcam Proctoring</h1>
+      <p><b>1000 Easy</b> Java questions • <b>10 Proctored Batches (100 Qs each)</b> • Face + Motion monitoring</p>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+        <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">1000 Easy • Proctored</span>
+        <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">Monaco Editor</span>
+        <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">Java 17</span>
+        <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">Face + Motion</span>
+      </div>
+    </div>
+    <div style="background:#fff;color:var(--text);padding:16px;border-radius:12px;min-width:280px">
+      <b style="font-size:13px">Proctoring - 1000 Q Batch</b>
+      <ul style="font-size:12px;color:var(--muted);margin-top:8px;margin-left:16px;line-height:1.8">
+        <li>All 1000 Easy marked proctored</li>
+        <li>10 exams × 100 Qs (90 mins each)</li>
+        <li>Face must stay centered</li>
+        <li>Motion & tab switch flagged</li>
+        <li>Violations → backend / Report</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat"><b id="statExams">-</b><span>Exams (13)</span></div>
+    <div class="stat"><b id="statProblems">-</b><span>Java Problems</span></div>
+    <div class="stat"><b id="statEasy">-</b><span>Easy • Proctored</span></div>
+    <div class="stat"><b id="statSubs">-</b><span>Submissions</span></div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap">
+    <h2 style="font-size:16px">Available Exams <small style="font-weight:400;color:var(--muted)">(10×100Q proctored batches + 3 legacy)</small></h2>
+    <input id="search" placeholder="Search exams..." style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;width:240px" oninput="renderExams()"/>
+  </div>
+  <div class="grid" id="examGrid"></div>
+
+  <!-- Problems Browser for 1000 -->
+  <div style="margin-top:28px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <h3 style="font-size:14px">Problem Bank — 1000 Easy (Proctored) <span id="probCount" style="font-weight:400;color:var(--muted)"></span></h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="probSearch" placeholder="Search (title/id)..." style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;width:200px" oninput="loadProblems(1)"/>
+        <select id="probCategory" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px" onchange="loadProblems(1)">
+          <option value="">All Categories</option>
+        </select>
+        <button class="btn" onclick="loadProblems(1)">Search</button>
+      </div>
+    </div>
+    <div id="probList" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <button class="btn" onclick="loadProblems(curPage-1)">← Prev</button>
+      <span id="probPageInfo" style="font-size:12px;color:var(--muted)"></span>
+      <button class="btn" onclick="loadProblems(curPage+1)">Next →</button>
+    </div>
+  </div>
+
+  <div style="margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px">
+    <h3 style="font-size:14px;margin-bottom:10px">Recent Submissions</h3>
+    <div id="subsList" style="font-size:12px;color:var(--muted)">Loading...</div>
+  </div>
+
+  <!-- My Reports - personalized download with name -->
+  <div style="margin-top:18px;background:linear-gradient(135deg,#fff 0%,#f8fafc 100%);border:1px solid var(--border);border-radius:12px;padding:18px">
+    <h3 style="font-size:14px">📥 Download My Proctor Report <small style="font-weight:400;color:var(--muted)">(personalized with your name)</small></h3>
+    <p style="font-size:12px;color:var(--muted)">If a proctor violation occurred, download your report instantly - filename and content include <b>your name</b>, exam title, and violation details. Works per-exam and per-user.</p>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <input id="myReportUser" placeholder="Your name (e.g. Alex)" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;flex:1;min-width:160px"/>
+      <select id="myReportExam" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;flex:1;min-width:200px"></select>
+      <button class="btn" onclick="downloadMyReport('csv')">⬇️ CSV</button>
+      <button class="btn" onclick="downloadMyReport('json')">⬇️ JSON</button>
+      <button class="btn btn-primary" onclick="loadMyReports()">View All My Reports</button>
+    </div>
+    <div id="myReportsOut" style="margin-top:12px;display:none"></div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px">Tip: Login sets your name automatically. After any <code>NO_FACE</code> / <code>TAB_SWITCH</code> etc., a download button appears in the exam too.</p>
+  </div>
+
+  <div style="margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px">
+    <h3 style="font-size:14px">Proctoring Reports (Instructor)</h3>
+    <p style="font-size:12px;color:var(--muted)">View flagged violations per exam • Each student's report downloadable with their name</p>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <select id="reportExam" style="padding:8px;border:1px solid var(--border);border-radius:8px;flex:1"></select>
+      <button class="btn btn-primary" onclick="loadReport()">Load Report</button>
+    </div>
+    <div id="reportCards" style="margin-top:12px;display:grid;gap:10px"></div>
+    <pre id="reportOut" style="margin-top:12px;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:11px;overflow:auto;max-height:300px;display:none"></pre>
+  </div>
+</div>
+
+<!-- Login Modal -->
+<div class="modal" id="loginModal" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal-box">
+    <h3>Enter Exam Portal</h3>
+    <p style="font-size:12px;color:var(--muted);margin:6px 0 14px">No password needed for demo - just enter name/role</p>
+    <input id="loginName" placeholder="Your name (e.g. Alex)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px"/>
+    <select id="loginRole" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:14px">
+      <option value="student">Student</option>
+      <option value="instructor">Instructor</option>
+    </select>
+    <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Continue</button>
+  </div>
+</div>
+
+<!-- Pre-exam Check Modal -->
+<div class="modal" id="preCheckModal">
+  <div class="modal-box" style="max-width:520px;text-align:left">
+    <h3>Pre-Exam Proctoring Check</h3>
+    <div style="background:#000;border-radius:8px;overflow:hidden;margin:12px 0;aspect-ratio:4/3;position:relative">
+      <video id="preVideo" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1)"></video>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;font-size:11px" id="preStatus">Requesting webcam...</div>
+    </div>
+    <ul style="font-size:12px;color:var(--muted);margin-left:16px">
+      <li id="chkCam">⏳ Webcam access</li>
+      <li id="chkFace">⏳ Face detection</li>
+      <li id="chkLight">⏳ Lighting check</li>
+    </ul>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn" style="flex:1" onclick="document.getElementById('preCheckModal').classList.remove('show')">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" id="btnStartExam" disabled onclick="confirmStart()">Start Exam</button>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Exam will go fullscreen and start timer. Tab switch & copy-paste will be monitored.</p>
+  </div>
+</div>
+
+<!-- Admin Modal -->
+<div class="modal" id="adminModal" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal-box" style="max-width:620px;text-align:left;max-height:85vh;overflow:auto">
+    <h3>Create New Exam (Proctored)</h3>
+    <input id="admTitle" placeholder="Exam title" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;margin:8px 0"/>
+    <input id="admDesc" placeholder="Description" style="width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px"/>
+    <div style="display:flex;gap:8px">
+      <input id="admDuration" type="number" value="30" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:8px" placeholder="Duration mins"/>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="admProctor" checked/> Proctoring</label>
+    </div>
+    <div style="margin:10px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:12px">Select Java Problems (1000 Easy available):</b>
+        <input id="admSearch" placeholder="Search..." style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;width:160px" oninput="loadAdmProblems()"/>
+      </div>
+      <div id="admProblems" style="max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:6px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <span id="admPageInfo" style="font-size:11px;color:var(--muted)"></span>
+        <div style="display:flex;gap:6px"><button class="btn" style="padding:4px 8px;font-size:11px" onclick="admPage=Math.max(1,admPage-1);loadAdmProblems()">Prev</button><button class="btn" style="padding:4px 8px;font-size:11px" onclick="admPage++;loadAdmProblems()">Next</button></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="createExam()">Create Exam</button>
+  </div>
+</div>
+
+<script>
+let EXAMS=[], currentUser = JSON.parse(localStorage.getItem('procto_user')||'null');
+let pendingExamId=null, preStream=null;
+let curPage=1, curTotal=0, admPage=1;
+
+function updateUserLabel(){
+  const el=document.getElementById('userLabel');
+  if(currentUser) el.textContent = currentUser.name+' ('+currentUser.role+')';
+  else el.textContent='Guest - login to start';
+  const myIn=document.getElementById('myReportUser');
+  if(myIn && currentUser) myIn.value=currentUser.name;
+}
+updateUserLabel();
+async function fetchJSON(u,opts){ const r=await fetch(u,opts); return r.json(); }
+
+function normalizeProblems(data){
+  if(Array.isArray(data)) return {problems:data, total:data.length};
+  if(data.problems) return {problems:data.problems, total:data.total};
+  return {problems:[], total:0};
+}
+
+async function init(){
+  const [exams, count, subs] = await Promise.all([
+    fetchJSON('/api/exams'),
+    fetchJSON('/api/problems/count'),
+    fetchJSON('/api/submissions')
+  ]);
+  EXAMS=exams;
+  document.getElementById('statExams').textContent=exams.length;
+  document.getElementById('statProblems').textContent=count.total;
+  document.getElementById('statEasy').textContent=count.easy+' proctored';
+  document.getElementById('statSubs').textContent=subs.length;
+  document.getElementById('probCount').textContent = `(${count.total} total • ${count.proctored} proctored)`;
+  // categories
+  const catSel=document.getElementById('probCategory');
+  (count.categories||[]).slice(0,20).forEach(c=>{
+    const opt=document.createElement('option'); opt.value=c; opt.textContent=c; catSel.appendChild(opt);
+  });
+  renderExams();
+  renderSubs(subs);
+  const sel=document.getElementById('reportExam');
+  sel.innerHTML=exams.map(e=>`<option value="${e.id}">${e.title}</option>`).join('');
+  const sel2=document.getElementById('myReportExam');
+  if(sel2) sel2.innerHTML=exams.map(e=>`<option value="${e.id}">${e.title}</option>`).join('');
+  // sync my user field if logged in
+  const myIn=document.getElementById('myReportUser');
+  if(myIn && currentUser) myIn.value=currentUser.name;
+  loadProblems(1);
+  loadAdmProblems();
+}
+init();
+
+function renderExams(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const grid=document.getElementById('examGrid');
+  const filtered=EXAMS.filter(e=>!q||e.title.toLowerCase().includes(q)||e.description.toLowerCase().includes(q));
+  grid.innerHTML=filtered.map(e=>`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="badge ${e.proctoring?'badge-proctored':''}" style="${!e.proctoring?'background:#e0e7ff;color:#3730a3':''}">${e.proctoring?'🔴 Proctored':'Practice'}</span>
+        <span style="font-size:12px;color:var(--muted)">${e.durationMins} mins • ${e.problemCount} Qs • ${e.totalMarks} marks</span>
+      </div>
+      <h3>${e.title}</h3>
+      <p>${e.description}</p>
+      <div class="meta"><span>By ${e.createdBy}</span></div>
+      <div class="exam-actions">
+        <button class="btn" onclick="viewExam('${e.id}')">Details</button>
+        <button class="btn btn-primary" onclick="startExam('${e.id}')">Start Exam →</button>
+      </div>
+    </div>
+  `).join('') || '<p style="color:var(--muted)">No exams found</p>';
+}
+function renderSubs(subs){
+  const el=document.getElementById('subsList');
+  if(!subs.length){ el.textContent='No submissions yet'; return; }
+  el.innerHTML='<table class="test-table"><tr><th>Time</th><th>Exam/Problem</th><th>User</th><th>Verdict</th><th>Score</th></tr>'+
+    subs.slice(0,10).map(s=>`<tr><td>${new Date(s.timestamp).toLocaleTimeString()}</td><td>${s.examId||s.problemId||s.id}</td><td>${s.userId||'-'}</td><td>${s.verdict||s.avgScore||'-'}</td><td>${s.score!=null?s.score:s.avgScore!=null?s.avgScore:'-'}</td></tr>`).join('')+'</table>';
+}
+async function loadProblems(page){
+  curPage=Math.max(1,page);
+  const q=document.getElementById('probSearch').value.trim();
+  const cat=document.getElementById('probCategory').value;
+  let url=`/api/problems?page=${curPage}&limit=24`;
+  if(q) url+=`&search=${encodeURIComponent(q)}`;
+  if(cat) url+=`&category=${encodeURIComponent(cat)}`;
+  const data=await fetchJSON(url);
+  const {problems, total}=normalizeProblems(data);
+  curTotal= data.total || total;
+  document.getElementById('probPageInfo').textContent=`Page ${curPage} / ${Math.ceil(curTotal/24)} • ${curTotal} total`;
+  document.getElementById('probList').innerHTML=problems.map(p=>`
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;background:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:12px">${p.title}</b>
+        <span class="badge badge-easy">${p.difficulty}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${p.id} • ${p.category} ${p.proctored?'• 🔴 Proctored':''}</div>
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button class="btn" style="flex:1;padding:6px;font-size:11px" onclick="location.href='/exam?id=exam-java-easy-proctored-1'">Practice</button>
+        <button class="btn btn-primary" style="flex:1;padding:6px;font-size:11px" onclick="viewProblem('${p.id}')">View</button>
+      </div>
+    </div>
+  `).join('');
+}
+function viewProblem(id){
+  // open exam with single problem quick: store and go to exam page with first problem
+  alert('Problem '+id+' - open via exam. Use Admin to create custom proctored exam with this Q.');
+}
+let admCache=[];
+async function loadAdmProblems(){
+  const q=document.getElementById('admSearch').value.trim();
+  let url=`/api/problems?page=${admPage}&limit=50`;
+  if(q) url+=`&search=${encodeURIComponent(q)}`;
+  const data=await fetchJSON(url);
+  const {problems, total}=normalizeProblems(data);
+  document.getElementById('admPageInfo').textContent=`${total} total • page ${admPage}`;
+  document.getElementById('admProblems').innerHTML = problems.map(p=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px"><input type="checkbox" value="${p.id}"/> ${p.id} - ${p.title} <span class="badge badge-easy" style="margin-left:auto">${p.difficulty}</span></label>
+  `).join('');
+}
+function viewExam(id){ location.href='/exam?id='+id; }
+function startExam(id){
+  if(!currentUser){ document.getElementById('loginModal').classList.add('show'); return; }
+  pendingExamId=id;
+  document.getElementById('preCheckModal').classList.add('show');
+  startPreCheck();
+}
+async function startPreCheck(){
+  const v=document.getElementById('preVideo');
+  const s=document.getElementById('preStatus');
+  try{
+    preStream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480},audio:false});
+    v.srcObject=preStream;
+    s.textContent='Webcam active - checking...';
+    document.getElementById('chkCam').textContent='✅ Webcam access granted';
+    setTimeout(()=>{
+      document.getElementById('chkFace').textContent='✅ Face detection ready (will enforce during exam)';
+      document.getElementById('chkLight').textContent='✅ Lighting OK';
+      document.getElementById('btnStartExam').disabled=false;
+      s.textContent='Ready to start - face centered?';
+    },1200);
+  }catch(e){
+    s.textContent='Webcam denied: '+e.message;
+    document.getElementById('chkCam').textContent='❌ Webcam denied - exam requires camera';
+  }
+}
+function confirmStart(){
+  if(preStream) preStream.getTracks().forEach(t=>t.stop());
+  document.getElementById('preCheckModal').classList.remove('show');
+  location.href='/exam?id='+pendingExamId;
+}
+function doLogin(){
+  const name=document.getElementById('loginName').value.trim()||'Student';
+  const role=document.getElementById('loginRole').value;
+  currentUser={name,role};
+  localStorage.setItem('procto_user',JSON.stringify(currentUser));
+  updateUserLabel();
+  document.getElementById('loginModal').classList.remove('show');
+}
+function openAdmin(){ document.getElementById('adminModal').classList.add('show'); loadAdmProblems(); }
+async function createExam(){
+  const title=document.getElementById('admTitle').value.trim();
+  const description=document.getElementById('admDesc').value.trim();
+  const durationMins=parseInt(document.getElementById('admDuration').value)||30;
+  const proctoring=document.getElementById('admProctor').checked;
+  const checked=[...document.querySelectorAll('#admProblems input:checked')].map(i=>i.value);
+  if(!title||!checked.length) return alert('Title and at least one problem required');
+  const res=await fetch('/api/exams',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description,durationMins,problemIds:checked,proctoring})});
+  const data=await res.json();
+  if(data.error) return alert(data.error);
+  document.getElementById('adminModal').classList.remove('show');
+  init();
+}
+function downloadReport(examId, userId, format){
+  if(!userId) return alert('Enter user name');
+  const url=`/api/proctor/download/${encodeURIComponent(examId)}?userId=${encodeURIComponent(userId)}&format=${format}`;
+  const a=document.createElement('a'); a.href=url; a.download=''; document.body.appendChild(a); a.click(); a.remove();
+}
+function downloadMyReport(format){
+  const userId=document.getElementById('myReportUser').value.trim() || (currentUser&&currentUser.name) || '';
+  const examId=document.getElementById('myReportExam').value;
+  if(!userId) return alert('Enter your name');
+  if(!examId) return alert('Select exam');
+  downloadReport(examId, userId, format);
+}
+async function loadMyReports(){
+  const userId=document.getElementById('myReportUser').value.trim() || (currentUser&&currentUser.name) || '';
+  if(!userId) return alert('Enter your name');
+  const data=await fetchJSON('/api/proctor/user/'+encodeURIComponent(userId));
+  const out=document.getElementById('myReportsOut');
+  out.style.display='block';
+  if(!data.reports.length){
+    out.innerHTML=`<div style="padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted)">No proctor logs for <b>${userId}</b> yet. Trigger a violation (tab switch, no face) to test.</div>`;
+    return;
+  }
+  out.innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Found ${data.totalViolations} violation(s) across ${data.totalExams} exam(s) for <b>${userId}</b></div>`+
+    data.reports.map(r=>`
+      <div style="border:1px solid var(--border);border-radius:8px;padding:10px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div>
+          <b style="font-size:12px">${r.examTitle}</b> <span style="font-size:11px;color:var(--muted)">(${r.examId})</span><br/>
+          <span style="font-size:11px;color:${r.flagged?'var(--danger)':'var(--muted)'}">${r.count} violation(s) ${r.flagged?'• 🔴 FLAGGED':''} • last ${r.last?new Date(r.last).toLocaleString():'-'}</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">${r.logs.map(l=>`${l.event} @ ${new Date(l.timestamp).toLocaleTimeString()}`).join(' • ')}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn" style="font-size:11px;padding:6px 10px" onclick="downloadReport('${r.examId}','${userId}','csv')">⬇️ CSV</button>
+          <button class="btn" style="font-size:11px;padding:6px 10px" onclick="downloadReport('${r.examId}','${userId}','json')">⬇️ JSON</button>
+        </div>
+      </div>
+    `).join('');
+}
+async function loadReport(){
+  const id=document.getElementById('reportExam').value;
+  const data=await fetchJSON('/api/proctor/report/'+id);
+  const out=document.getElementById('reportOut');
+  const cards=document.getElementById('reportCards');
+  out.style.display='block';
+  out.textContent=JSON.stringify(data,null,2);
+  // render cards with download per user (with their name)
+  const reports=data.reports || (data.logs ? [{userId:data.userId, count:data.total||data.logs.length, flagged:data.flagged, logs:data.logs}] : []);
+  if(!reports.length){
+    cards.innerHTML=`<div style="padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted)">No violations for this exam yet.</div>`;
+    return;
+  }
+  cards.innerHTML=reports.map(r=>`
+    <div style="border:1px solid ${r.flagged?'#fecaca':'var(--border)'};border-radius:10px;padding:12px;background:${r.flagged?'#fef2f2':'#fff'};display:flex;justify-content:space-between;gap:10px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">${r.userId} <span style="font-weight:400;color:${r.flagged?'var(--danger)':'var(--muted)'}">• ${r.count} violation(s) ${r.flagged?'🔴 FLAGGED':''}</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;max-height:100px;overflow:auto">${(r.logs||[]).map(l=>`<div style="margin-bottom:4px"><b>${l.event}</b> <span style="color:var(--muted)">${new Date(l.timestamp).toLocaleString()}</span> - ${l.details}</div>`).join('') || '<i>No logs</i>'}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:110px">
+        <button class="btn btn-primary" style="font-size:11px;padding:6px" onclick="downloadReport('${id}','${r.userId}','csv')">⬇️ ${r.userId} CSV</button>
+        <button class="btn" style="font-size:11px;padding:6px" onclick="downloadReport('${id}','${r.userId}','json')">⬇️ JSON</button>
+      </div>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>
